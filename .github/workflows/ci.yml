@@ -1,0 +1,33 @@
+name: CI
+
+# The public mirror's workflow. Mirrors `just ci` (lint + the locked
+# suite). The SDK crates are git-pinned at the public terva-sdk-rust
+# mirror over https, which needs no credentials, so there is no key step
+# here. `just e2e` (docker + a throwaway Synapse) stays local; the
+# CHANGELOG records the run for every release.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+
+      - name: rustfmt
+        run: cargo fmt --check
+
+      - name: clippy
+        run: cargo clippy --release --all-targets -- -D warnings
+
+      - name: test
+        run: cargo test --release --locked

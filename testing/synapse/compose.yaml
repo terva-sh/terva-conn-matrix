@@ -1,0 +1,44 @@
+# Throwaway local Synapse for the live compliance suite (`just e2e`).
+#
+# Deliberately NOT your Matrix ecosystem: server_name `localhost`, no
+# federation, open registration, sqlite, all state under ./data (gitignored;
+# `just synapse-clean` wipes it for a factory-fresh server).
+#
+# The signing key is generated into ./data on first start (--generate-keys),
+# so nothing secret-shaped lives in the repo.
+services:
+  synapse:
+    image: ${SYNAPSE_IMAGE:-ghcr.io/element-hq/synapse:latest}
+    container_name: terva-conn-matrix-synapse
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        python -m synapse.app.homeserver --config-path /config/homeserver.yaml --generate-keys &&
+        exec python -m synapse.app.homeserver --config-path /config/homeserver.yaml
+    ports:
+      # Host port chosen to stay clear of any real homeserver on 8008/8448.
+      - "${SYNAPSE_PORT:-18008}:8008"
+    volumes:
+      - ./homeserver.yaml:/config/homeserver.yaml:ro
+      - ./log.config:/config/log.config:ro
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fSs", "http://localhost:8008/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+      start_period: 5s
+
+  # Element Web preconfigured against the throwaway Synapse, so dogfooding
+  # needs no manual homeserver setup: open it, register, go. The human side
+  # only — the bot always talks to Synapse directly.
+  #
+  # element-config.json points the BROWSER at http://127.0.0.1:18008 — if you
+  # override SYNAPSE_PORT, edit the base_url there to match.
+  element:
+    image: ${ELEMENT_IMAGE:-vectorim/element-web:latest}
+    container_name: terva-conn-matrix-element
+    ports:
+      - "${ELEMENT_PORT:-18009}:80"
+    volumes:
+      - ./element-config.json:/app/config.json:ro

@@ -1,0 +1,8 @@
+{
+  "name": "matrix",
+  "version": "0.14.0",
+  "exec": "./run.sh",
+  "args": [],
+  "enabled": true,
+  "description": "Matrix chat connector (matrix-rust-sdk, E2EE-capable)"
+}

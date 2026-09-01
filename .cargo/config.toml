@@ -1,0 +1,5 @@
+# The SDK dependencies are git-pinned (see Cargo.toml). Fetch with the git
+# CLI so the ambient git setup — ssh keys, credential helpers, proxies —
+# applies to the fetch exactly as it does to a plain `git clone`.
+[net]
+git-fetch-with-cli = true

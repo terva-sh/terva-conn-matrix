@@ -1,0 +1,59 @@
+[package]
+name = "terva-conn-matrix"
+version = "0.14.0"
+edition = "2021"
+rust-version = "1.93"
+description = "terva Matrix chat connector: a standalone connproto v2 connector on the native matrix-rust-sdk"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "terva-conn-matrix"
+path = "src/main.rs"
+
+[dependencies]
+# The connproto wire/serve layers and the env conventions live in the
+# shared Rust SDK (terva-sdk-rust). Pinned by release tag (its P8 model:
+# pin for release, path for dev — co-develop via the [patch] block at
+# the bottom of this file). The ssh fetch needs .cargo/config.toml's
+# net.git-fetch-with-cli.
+terva-wire = { git = "https://github.com/terva-sh/terva-sdk-rust", tag = "v0.3.4" }
+terva-connproto = { git = "https://github.com/terva-sh/terva-sdk-rust", tag = "v0.3.4" }
+terva-connsdk = { git = "https://github.com/terva-sh/terva-sdk-rust", tag = "v0.3.4" }
+terva-env = { git = "https://github.com/terva-sh/terva-sdk-rust", tag = "v0.3.4" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# Pinned exact (=): matrix-sdk is pre-1.0 and reworks surfaces between
+# minors; upgrade deliberately (PLAN.md §9).
+matrix-sdk = { version = "=0.18.0", features = ["markdown"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time"] }
+futures-util = "0.3"
+mime = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1"
+rpassword = "7"
+
+[dev-dependencies]
+# MatrixMockServer (wiremock) for homeserver-free Matrix layer tests;
+# matrix-sdk-test for JoinedRoomBuilder/EventFactory (not re-exported).
+matrix-sdk = { version = "=0.18.0", features = ["markdown", "testing"] }
+matrix-sdk-test = "=0.18.0"
+# Raw wiremock for the endpoints MatrixMockServer has no helper for (typing).
+wiremock = "0.6"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync", "time", "test-util"] }
+# The sealing tests play the host's side: mint a terva identity, prove the
+# sealed token opens with it. Same crate the SDK's SealedState uses.
+age = "0.11"
+
+[profile.release]
+opt-level = 2
+
+# Co-development against the sibling SDK checkout: uncomment, work, and
+# re-comment (reverting the Cargo.lock churn) before committing — the
+# committed state always builds from the pin alone.
+# [patch."https://github.com/terva-sh/terva-sdk-rust"]
+# terva-wire = { path = "../terva-sdk-rust/crates/terva-wire" }
+# terva-connproto = { path = "../terva-sdk-rust/crates/terva-connproto" }
+# terva-connsdk = { path = "../terva-sdk-rust/crates/terva-connsdk" }
+# terva-env = { path = "../terva-sdk-rust/crates/terva-env" }
