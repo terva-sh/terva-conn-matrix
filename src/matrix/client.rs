@@ -18,10 +18,15 @@ use super::is_invalid_token;
 ///
 /// The 10 s request timeout is safe for sync long-polls: the SDK adds the
 /// sync timeout on top of the base request timeout for sync requests.
+///
+/// The error is boxed: `ClientBuildError` is ~160 bytes, and clippy 1.98's
+/// `result_large_err` rightly objects to paying that on every Ok(Client)
+/// return. This runs once per connect, so the box costs nothing that
+/// matters.
 pub async fn build_client(
     homeserver_url: &str,
     store: Option<&Path>,
-) -> Result<Client, ClientBuildError> {
+) -> Result<Client, Box<ClientBuildError>> {
     let mut builder = Client::builder()
         .homeserver_url(homeserver_url)
         .request_config(
@@ -47,7 +52,7 @@ pub async fn build_client(
     if let Some(path) = store {
         builder = builder.sqlite_store(path, None);
     }
-    builder.build().await
+    builder.build().await.map_err(Box::new)
 }
 
 /// The marker recording that the one-time history-discarding sync has run.
@@ -81,7 +86,7 @@ pub(crate) async fn connect(
     }
     let client = build_client(&config.homeserver_url, Some(&store_path(state_dir)))
         .await
-        .map_err(classify_build_error)?;
+        .map_err(|err| classify_build_error(*err))?;
     client.restore_session(session).await.map_err(|err| {
         // Local store/session mismatch — a respawn will hit it again; only
         // reset + setup cures it. That is "permanently broken" on the wire.

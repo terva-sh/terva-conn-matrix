@@ -2,6 +2,16 @@
 
 Phases refer to [PLAN.md](PLAN.md) §8.
 
+## 0.14.1 — clean on clippy 1.98 (2026-09-01)
+
+No behavior change. The public mirror's first CI run failed on Rust
+1.98's new `result_large_err` lint: `build_client` returned matrix-sdk's
+~160-byte `ClientBuildError` by value, taxing every `Ok(Client)`. The
+error is boxed now — it is built once per connect, so the box costs
+nothing that matters — and the gate here runs the same clippy the
+runners do. The public `v0.14.0` tag stays: its tree builds and its
+tests pass; only the lint gate was red.
+
 ## 0.14.0 — the typing indicator clears with the reply (2026-08-31)
 
 - **Declares `typing_stop` and clears the indicator on the host's stop

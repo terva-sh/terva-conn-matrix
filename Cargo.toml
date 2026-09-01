@@ -1,6 +1,6 @@
 [package]
 name = "terva-conn-matrix"
-version = "0.14.0"
+version = "0.14.1"
 edition = "2021"
 rust-version = "1.93"
 description = "terva Matrix chat connector: a standalone connproto v2 connector on the native matrix-rust-sdk"
