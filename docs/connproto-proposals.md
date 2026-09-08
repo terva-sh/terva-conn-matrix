@@ -24,9 +24,10 @@ cost-to-value.
 ## Status (2026-08-31)
 
 Verified item-by-item against terva `sothr-main` @ `f629e9e3` on
-2026-08-30; §6 updated for terva #863 the day after. Eight of twelve
-shipped — every documentation item, the host fix, the typing stop, and
-the admission-gate buffer — and four did not; of those, one (§3) is now named in the contract as
+2026-08-30; §6 updated for terva #863 the day after. Nine of twelve
+shipped — every documentation item, the host fix, the typing stop, the
+admission-gate buffer, and the connsdk error results — and three did
+not; of those, one (§3) is now named in the contract as
 "not yet", and none is recorded upstream as declined. Each item below
 opens with its own **Shipped** / **Not shipped** line saying where it
 landed and how the shipped form differs from what was argued, or what
@@ -35,7 +36,7 @@ still holds it open.
 | # | item | status |
 |---|---|---|
 | 1 | connect budget | shipped — terva **#616** (docs) |
-| 2 | connsdk answers malformed/unknown | **open** |
+| 2 | connsdk answers malformed/unknown | shipped — terva **#874** |
 | 3 | host-side `(chat_id, id)` dedupe | **open** — the contract now says "does not yet" (#612) |
 | 4 | reconnect semantics | shipped — terva **#612** (docs) |
 | 5 | idempotent re-announcement | shipped — terva **#621** (docs; the rule as it stands, not persisted) |
@@ -48,8 +49,8 @@ still holds it open.
 | 12 | unpaired-run admission asks | shipped — terva **#606**, finished by `7d36e52d` |
 | — | correlation-rule docs ("Fixed on our side") | shipped — terva **#617** |
 
-The open four rank as filed: §2 is the cheapest; §3 is the one the
-contract already names as "not yet". This table is a snapshot of one
+Of the open three, §3 is the one the contract already names as "not
+yet"; §8 is a counter, §11 a minor honesty fix. This table is a snapshot of one
 tree, not a feed — re-verify against terva's development trunk before
 citing it. (Trunk shas quoted in these documents are provenance for the
 maintainers; terva's public mirror carries only its curated release
@@ -80,12 +81,14 @@ of bug in review instead.
 
 ## 2. connsdk: answer malformed and unknown commands *(mechanical)*
 
-**Not shipped** (verified at terva `f629e9e3`, 2026-08-30).
-The Go connsdk still `continue`s on a failed typed
-unmarshal for `edit` / `react` / `delete` / `thread_start` / `ask_close`
-(`connsdk.go:818-886`) and its `default:` arm (`:903`) still only logs.
-Line numbers moved; the behavior did not. Nothing upstream records it as
-declined, so it stays open. (Ours has answered since 0.2.0.)
+**Shipped — terva #874 (2026-09-01), exactly as scoped.** All nine
+id-carrying command cases answer `result{id, "malformed <type>: …"}` off
+the envelope on a failed typed unmarshal — the envelope survives the
+body, as argued below — and the `default:` arm answers
+`unknown command type` when the envelope carries an id, so a future
+command degrades in milliseconds against an older connector instead of
+per-command 30 s timeouts. Id-less frames stay log-only: no result is
+owed, and inventing one would corrupt the correlation space.
 
 The Go connsdk `continue`s on a failed typed unmarshal for every
 id-carrying command (`edit` :794, `react` :809, `delete` :824,

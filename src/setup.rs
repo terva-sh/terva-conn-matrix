@@ -11,6 +11,8 @@ use std::path::Path;
 use std::process::ExitCode;
 use std::time::Duration;
 
+use anyhow::Context;
+
 use crate::config::{
     self, config_path, load_config, load_session, save_config, session_path, store_path, Config,
 };
@@ -87,6 +89,7 @@ fn run_setup() -> anyhow::Result<()> {
     save_config(&state_dir, &cfg)?;
 
     cfg.e2ee = e2ee_setup(&runtime, &client, user_id.as_str(), &password);
+    cfg.e2ee_source = "setup".into();
     save_config(&state_dir, &cfg)?;
 
     // The sqlite pool aborts if destroyed outside a runtime context.
@@ -194,8 +197,14 @@ fn run_status() -> anyhow::Result<String> {
     } else {
         "missing"
     };
+    // An empty field is not a verdict of "unverified" — it is the absence
+    // of one, which is what a setup killed before its final save leaves
+    // behind. Saying so points at the verb that fixes it instead of
+    // implying the device failed verification.
     let e2ee = if cfg.e2ee.is_empty() {
-        "unknown".to_string()
+        "not recorded (run the `verify` verb)".to_string()
+    } else if cfg.e2ee_source == "verify" {
+        format!("{} (as of the last verify)", cfg.e2ee)
     } else {
         format!("{} (as of setup)", cfg.e2ee)
     };
@@ -220,6 +229,113 @@ fn run_status() -> anyhow::Result<String> {
         cfg.auto_join,
         config_path(&state_dir).display(),
     ))
+}
+
+pub fn verify() -> ExitCode {
+    match run_verify() {
+        Ok(text) => {
+            println!("{text}");
+            ExitCode::SUCCESS
+        }
+        Err(err) => {
+            eprintln!("matrix: verify: {err:#}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Read the live verification verdict, record it, and optionally wait for
+/// SAS — all on the session we already have.
+///
+/// `setup` writes its verdict only after its interactive tail returns, so a
+/// setup killed during recovery or the SAS wait leaves a working session
+/// and no verdict at all. The only other verb that touches E2EE is `setup`
+/// itself, and it logs in unconditionally: answering a read-only question
+/// with it costs a second registered device. This restores the saved
+/// session against the existing store instead, so it adds no device and
+/// creates no recovery key.
+fn run_verify() -> anyhow::Result<String> {
+    use crate::matrix::e2ee;
+
+    let state_dir = config::state_dir();
+    let mut cfg = load_config(&state_dir)?;
+    let Some(session) = load_session(&state_dir)? else {
+        anyhow::bail!("not configured (run `terva bot setup --connector matrix`)");
+    };
+    if cfg.homeserver_url.is_empty() {
+        anyhow::bail!("no homeserver URL in the config");
+    }
+
+    let runtime = tokio::runtime::Runtime::new()?;
+    let client = runtime.block_on(build_client(
+        &cfg.homeserver_url,
+        Some(&store_path(&state_dir)),
+    ))?;
+    runtime
+        .block_on(client.restore_session(session))
+        .context("restoring the saved session")?;
+
+    let mut verdict = runtime.block_on(e2ee::observe_verdict(&client, Duration::from_secs(30)))?;
+    println!("device {}: {verdict}", cfg.device_id);
+    // "unverified" has two causes that want opposite fixes, and the word
+    // alone hides which one this is. Either the server has no signature on
+    // this device, or we hold no cross-signing identity to check a
+    // signature against — the second is a recovery problem, and no amount
+    // of emoji will move it.
+    if verdict != "verified" && !runtime.block_on(e2ee::own_identity_known(&client)) {
+        println!(
+            "note: this store holds no cross-signing identity for {}, so no device here can read as verified.\n\
+             \x20     Restore it with a recovery key (`setup`, option 2) rather than another emoji round.",
+            cfg.user_id
+        );
+    }
+    // Save before the interactive tail, not after it. Losing the verdict to
+    // a closed terminal is the whole reason this verb exists, and the SAS
+    // wait below is exactly where that happened last time.
+    record_verdict(&state_dir, &mut cfg, verdict)?;
+
+    if verdict != "verified" {
+        let answer = prompt_with_default(
+            "wait for emoji verification from another client now? (y/N)",
+            "n",
+        )
+        .unwrap_or_else(|_| "n".into());
+        if matches!(answer.as_str(), "y" | "Y" | "yes") {
+            match runtime.block_on(e2ee::await_sas_verification(
+                &client,
+                Duration::from_secs(120),
+            )) {
+                Ok(_) => {}
+                Err(err) => eprintln!("matrix: e2ee: verification: {err:#}"),
+            }
+            verdict = runtime.block_on(e2ee::observe_verdict(&client, Duration::from_secs(30)))?;
+            record_verdict(&state_dir, &mut cfg, verdict)?;
+        }
+    }
+
+    // The sqlite pool aborts if destroyed outside a runtime context.
+    runtime.block_on(async move { drop(client) });
+
+    Ok(match verdict {
+        "verified" => format!("device {} is verified — recorded", cfg.device_id),
+        "unverified" => format!(
+            "device {} is NOT verified — recorded. Verify it from another client, then run this again.",
+            cfg.device_id
+        ),
+        _ => format!(
+            "device {} is not in the crypto store — recorded. The store may predate this session; `reset` then `setup` rebuilds it.",
+            cfg.device_id
+        ),
+    })
+}
+
+/// One write per reading, so an interrupted verify still leaves the last
+/// thing we actually knew.
+fn record_verdict(state_dir: &Path, cfg: &mut Config, verdict: &str) -> anyhow::Result<()> {
+    cfg.e2ee = format!("device {verdict}");
+    cfg.e2ee_source = "verify".into();
+    save_config(state_dir, cfg)?;
+    Ok(())
 }
 
 pub fn configured() -> ExitCode {

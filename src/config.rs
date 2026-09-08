@@ -58,10 +58,23 @@ pub struct Config {
     pub auto_join: String,
     /// Inbound attachment size ceiling (enforced from phase 5 on).
     pub max_attachment_mb: u64,
-    /// E2EE provisioning summary written by `setup` (e.g. "recovery
-    /// enabled, device verified"), shown by `status` — a snapshot, so
-    /// `status` never has to open the live crypto store.
+    /// E2EE provisioning summary written by `setup` or `verify` (e.g.
+    /// "recovery enabled, device verified"), shown by `status` — a
+    /// snapshot, so `status` never has to open the live crypto store.
+    ///
+    /// Empty means no verdict was ever recorded, which is NOT the same as
+    /// "unverified". `setup` writes this only after its interactive tail
+    /// returns, so a setup killed during recovery or the SAS wait leaves a
+    /// working session with this field empty. `verify` exists to fill it in
+    /// without logging in a new device.
     pub e2ee: String,
+    /// Which verb last wrote [`Self::e2ee`]: "verify" for a live read of
+    /// the crypto store, anything else for a setup-time note. Empty is the
+    /// shape of every config written before this field existed, and back
+    /// then only `setup` wrote a verdict at all. `status` says which,
+    /// because a snapshot from provisioning and a reading taken just now
+    /// age very differently.
+    pub e2ee_source: String,
     /// MSC4144 per-message speaker profiles: "" / "off" (default, the host
     /// renders its `**Name:**` prefix fallback), "name_only", or "full"
     /// (avatars uploaded too). Off until per-message-profile rendering is

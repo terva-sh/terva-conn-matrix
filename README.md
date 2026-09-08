@@ -43,7 +43,7 @@ connector.json   — the terva connector manifest (name: matrix)
 run.sh           — launcher terva execs; builds with cargo when sources changed
 PLAN.md          — the implementation plan (protocol contract, Matrix mapping, phases)
 src/
-  main.rs        — verb dispatch (run/setup/status/reset/configured)
+  main.rs        — verb dispatch (run/setup/status/reset/configured/verify)
   lib.rs         — re-exports the connproto wire layer from terva-sdk-rust
                    (terva-connproto/-connsdk/-wire, git-pinned by release
                    tag) under the historical proto/serve/wire module names
@@ -57,7 +57,7 @@ src/
                    mock-homeserver tests (tests.rs)
 tests/
   wire_smoke.rs  — drives the real binary through the host conversation
-  verbs.rs       — configured/status/reset smokes against an isolated home
+  verbs.rs       — configured/status/reset/verify smokes against an isolated home
   conventions.rs — version lockstep + run.sh exec-bit guards
                    (the golden corpus + serve replay live with the SDK now)
 docs/

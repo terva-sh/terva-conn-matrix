@@ -98,6 +98,12 @@ pub async fn recover_with_key(client: &Client, recovery_key: &str) -> anyhow::Re
 }
 
 /// Current verification verdict, as a status word.
+///
+/// Reads the `VerificationState` observable, which only moves when a
+/// `/keys/query` response carrying our own device is processed. On a client
+/// that has not synced yet it reports `unknown` even for a device that is
+/// cross-signed server-side. Use [`observe_verdict`] when the answer has to
+/// be true rather than merely current.
 pub async fn verification_summary(client: &Client) -> &'static str {
     client
         .encryption()
@@ -108,6 +114,76 @@ pub async fn verification_summary(client: &Client) -> &'static str {
         VerificationState::Unverified => "unverified",
         VerificationState::Unknown => "unknown",
     }
+}
+
+/// The verdict as the crypto store has it, with no observable in the way.
+///
+/// This is the same question `update_verification_state` asks inside the
+/// SDK: is our own device signed by our own identity. `unknown` here means
+/// the store does not hold our device at all, which is a real answer and
+/// not a "not yet".
+pub async fn own_device_verdict(client: &Client) -> anyhow::Result<&'static str> {
+    let device = client
+        .encryption()
+        .get_own_device()
+        .await
+        .context("reading our own device from the crypto store")?;
+    Ok(match device {
+        Some(device) if device.is_cross_signed_by_owner() => "verified",
+        Some(_) => "unverified",
+        None => "unknown",
+    })
+}
+
+/// The true verdict, refreshing our own keys from the server first.
+///
+/// Signatures live on the server, so the stored copy of our own device goes
+/// stale the moment another client signs it. Refreshing it by syncing does
+/// not work reliably: a sync only triggers the `/keys/query` when the
+/// response puts us in `device_lists.changed`, and a signature uploaded
+/// while we were offline need not appear there at all on an initial sync.
+/// That leaves the pre-signature copy in place and reads as `unverified`.
+///
+/// `request_user_identity` issues the `/keys/query` outright, so the answer
+/// does not depend on what the sync response chose to mention. It also
+/// touches no sync token, which keeps this verb off the connector's
+/// message-resume position.
+///
+/// A refresh that fails degrades to the stored reading rather than to an
+/// error: a stale answer beats no answer, and the caller prints which it is.
+pub async fn observe_verdict(client: &Client, wait: Duration) -> anyhow::Result<&'static str> {
+    client
+        .encryption()
+        .wait_for_e2ee_initialization_tasks()
+        .await;
+
+    let Some(user_id) = client.user_id() else {
+        bail!("the restored session carries no user id");
+    };
+    match tokio::time::timeout(wait, client.encryption().request_user_identity(user_id)).await {
+        Ok(Ok(_)) => {}
+        Ok(Err(err)) => eprintln!("matrix: e2ee: refreshing our keys: {err}"),
+        Err(_) => {
+            eprintln!("matrix: e2ee: timed out refreshing our keys — reporting the stored view")
+        }
+    }
+    own_device_verdict(client).await
+}
+
+/// Whether the store holds our own cross-signing identity.
+///
+/// Without it every device reads as unverified no matter how many
+/// signatures the server holds, because the check needs the identity to
+/// check them against. Worth telling the operator apart from an unsigned
+/// device: the fix is recovery, not another emoji round.
+pub async fn own_identity_known(client: &Client) -> bool {
+    let Some(user_id) = client.user_id() else {
+        return false;
+    };
+    matches!(
+        client.encryption().get_user_identity(user_id).await,
+        Ok(Some(_))
+    )
 }
 
 /// Wait for an emoji (SAS) verification started from another client logged

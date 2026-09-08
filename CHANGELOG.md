@@ -2,6 +2,40 @@
 
 Phases refer to [PLAN.md](PLAN.md) §8.
 
+## 0.14.2 — a `verify` verb, because setup could lose the verdict (2026-09-08)
+
+- **New `verify` verb: re-read the E2EE verdict on the session you already
+  have.** `setup` writes `cfg.e2ee` only after its interactive tail
+  returns, so a setup killed during recovery or the 120 s SAS wait leaves a
+  working session and no verdict at all. Until now the only way to answer
+  the question again was `setup`, which logs in unconditionally and costs a
+  second registered device. `verify` restores the saved session against the
+  existing store instead: no login, no new device, no recovery key. It
+  prints the verdict, records it, and offers SAS only when the device is
+  not already verified. terva never calls it; an operator runs it by hand.
+- **It forces a key query rather than trusting a sync.** Signatures live on
+  the server, so the stored copy of our own device goes stale the moment
+  another client signs it. Refreshing by `sync_once` is not enough: a sync
+  issues the key query only when the response puts us in
+  `device_lists.changed`, and a signature uploaded while we were offline
+  need not appear there on an initial sync. Measured on a live deployment,
+  a sync-refreshed read said `unverified` and `request_user_identity`
+  said `verified` against the same store seconds later. `verify` issues the
+  query outright, which also keeps it off the connector's sync-resume
+  position.
+- **`status` no longer calls a missing verdict `unknown`.** An empty
+  `e2ee` means no verdict was ever recorded, which is not the same claim as
+  "the device is not verified"; it now reads `not recorded` and names the
+  verb that fixes it. A new `e2ee_source` field records which verb wrote
+  the snapshot, so `status` says `(as of setup)` or `(as of the last
+  verify)` rather than always crediting setup. The field defaults to empty
+  and older configs keep reading as setup's, which is what they were.
+- Known gap, filed separately: `setup` still decides whether to offer SAS
+  from `verification_summary`, which reads an observable that nothing in
+  the setup path can move, so it reports `unknown` even when recovery just
+  cross-signed the device. `verify` is the way out of that today; setup
+  itself is unchanged here.
+
 ## 0.14.1 — clean on clippy 1.98 (2026-09-01)
 
 No behavior change. The public mirror's first CI run failed on Rust

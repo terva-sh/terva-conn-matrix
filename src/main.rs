@@ -7,6 +7,11 @@
 //! terva invokes the manifest `exec` with a lifecycle verb appended as the
 //! LAST argv element: run | setup | status | reset | configured. Only `run`
 //! speaks the protocol.
+//!
+//! `verify` is ours rather than the host's: terva never calls it, and an
+//! operator runs it by hand against a configured home. It re-reads the
+//! E2EE verdict on the existing session, which `status` cannot do because
+//! it only reports the stored snapshot.
 
 use std::io;
 use std::process::ExitCode;
@@ -36,9 +41,10 @@ fn main() -> ExitCode {
         "status" => setup::status(),
         "reset" => setup::reset(),
         "configured" => setup::configured(),
+        "verify" => setup::verify(),
         other => {
             eprintln!(
-                "[matrix] unknown verb {other:?} — expected run|setup|status|reset|configured as the last argument"
+                "[matrix] unknown verb {other:?} — expected run|setup|status|reset|configured|verify as the last argument"
             );
             ExitCode::from(2)
         }
