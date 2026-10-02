@@ -379,6 +379,8 @@ pub(crate) async fn handle_message(
         chat_id: shape.chat_id,
         chat_kind: shape.chat_kind,
         chat_title: shape.chat_title,
+        parent_chat_id: shape.parent_chat_id,
+        parent_chat_kind: shape.parent_chat_kind,
         user_id: ev.sender.to_string(),
         username: ev.sender.localpart().to_string(),
         reply_to: shape.reply_to,

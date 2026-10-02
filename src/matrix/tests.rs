@@ -907,6 +907,8 @@ async fn attachment_message_ingests_into_data_dir() {
 
     let msg = next_message(&frames);
     assert_eq!(msg.id, "$img1");
+    assert_eq!(msg.parent_chat_id, "");
+    assert_eq!(msg.parent_chat_kind, "");
     assert_eq!(msg.text, "", "caption-less image carries no text");
     assert_eq!(msg.attachments.len(), 1, "{:?}", msg.attachments);
     let att = &msg.attachments[0];
@@ -923,6 +925,43 @@ async fn attachment_message_ingests_into_data_dir() {
         att.path
     );
     let _ = std::fs::remove_file(&att.path);
+
+    let root_event = f
+        .text_msg("attachment thread")
+        .event_id(event_id!("$media-root"))
+        .into_event();
+    server.mock_room_event().ok(root_event).mount().await;
+    for (kind, id) in [
+        ("group", event_id!("$thread-image-group")),
+        ("dm", event_id!("$thread-image-dm")),
+    ] {
+        if kind == "dm" {
+            shared.dm_rooms.lock().unwrap().insert(room_id.to_owned());
+        }
+        server
+            .sync_room(
+                &client,
+                JoinedRoomBuilder::new(room_id).add_timeline_event(
+                    f.image(
+                        "photo.jpg".to_owned(),
+                        matrix_sdk::ruma::mxc_uri!("mxc://localhost/img1").to_owned(),
+                    )
+                    .in_thread(event_id!("$media-root"), event_id!("$media-root"))
+                    .event_id(id),
+                ),
+            )
+            .await;
+        let msg = next_message(&frames);
+        assert_eq!(msg.chat_id, "!room:localhost;thread=$media-root");
+        assert_eq!(msg.parent_chat_id, room_id.as_str());
+        assert_eq!(msg.parent_chat_kind, kind);
+        assert_eq!(msg.attachments.len(), 1);
+        assert_eq!(
+            std::fs::read(&msg.attachments[0].path).unwrap(),
+            b"binaryjpegfullimagedata"
+        );
+        let _ = std::fs::remove_file(&msg.attachments[0].path);
+    }
 }
 
 /// Mount the mocks an ask needs and drive `handle_ask` to completion:
@@ -1386,6 +1425,8 @@ async fn inbound_thread_messages_route_to_the_derived_chat() {
     let msg = next_message(&frames);
     assert_eq!(msg.chat_id, "!room:localhost;thread=$root");
     assert_eq!(msg.chat_kind, "thread");
+    assert_eq!(msg.parent_chat_id, room_id.as_str());
+    assert_eq!(msg.parent_chat_kind, "group");
     assert_eq!(msg.chat_title, "planning the refactor", "root snippet");
     assert_eq!(msg.text, "thread talk");
     assert_eq!(
@@ -1407,6 +1448,26 @@ async fn inbound_thread_messages_route_to_the_derived_chat() {
     let msg = next_message(&frames);
     assert_eq!(msg.chat_id, "!room:localhost;thread=$root");
     assert_eq!(msg.reply_to, "$t1");
+
+    shared
+        .dm_rooms
+        .lock()
+        .expect("DM cache")
+        .insert(room_id.to_owned());
+    server
+        .sync_room(
+            &client,
+            JoinedRoomBuilder::new(room_id).add_timeline_event(
+                f.text_msg("DM thread")
+                    .in_thread(event_id!("$root"), event_id!("$t2"))
+                    .event_id(event_id!("$t3")),
+            ),
+        )
+        .await;
+    let msg = next_message(&frames);
+    assert_eq!(msg.chat_id, "!room:localhost;thread=$root");
+    assert_eq!(msg.parent_chat_id, room_id.as_str());
+    assert_eq!(msg.parent_chat_kind, "dm");
 }
 
 /// The host correlates message events on (chat_id, id) — an edit, delete,

@@ -1,6 +1,6 @@
 [package]
 name = "terva-conn-matrix"
-version = "0.14.2"
+version = "0.14.3"
 edition = "2021"
 rust-version = "1.93"
 description = "terva Matrix chat connector: a standalone connproto v2 connector on the native matrix-rust-sdk"
@@ -13,14 +13,13 @@ path = "src/main.rs"
 
 [dependencies]
 # The connproto wire/serve layers and the env conventions live in the
-# shared Rust SDK (terva-sdk-rust). Pinned by release tag (its P8 model:
-# pin for release, path for dev — co-develop via the [patch] block at
-# the bottom of this file). The ssh fetch needs .cargo/config.toml's
+# shared Rust SDK (terva-sdk-rust), pinned to the released parent-context API.
+# Co-develop via the [patch] block below. The ssh fetch needs .cargo/config.toml's
 # net.git-fetch-with-cli.
-terva-wire = { git = "https://github.com/terva-sh/terva-sdk-rust", tag = "v0.3.4" }
-terva-connproto = { git = "https://github.com/terva-sh/terva-sdk-rust", tag = "v0.3.4" }
-terva-connsdk = { git = "https://github.com/terva-sh/terva-sdk-rust", tag = "v0.3.4" }
-terva-env = { git = "https://github.com/terva-sh/terva-sdk-rust", tag = "v0.3.4" }
+terva-wire = { git = "https://github.com/terva-sh/terva-sdk-rust", tag = "v0.4.0" }
+terva-connproto = { git = "https://github.com/terva-sh/terva-sdk-rust", tag = "v0.4.0" }
+terva-connsdk = { git = "https://github.com/terva-sh/terva-sdk-rust", tag = "v0.4.0" }
+terva-env = { git = "https://github.com/terva-sh/terva-sdk-rust", tag = "v0.4.0" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # Pinned exact (=): matrix-sdk is pre-1.0 and reworks surfaces between

@@ -81,6 +81,7 @@ impl Connector {
         for feature in [
             "message_ids",
             "chat_kinds",
+            "chat_parents",
             "entities",
             "chat_membership",
             "edits_in",

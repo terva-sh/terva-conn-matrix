@@ -75,6 +75,7 @@ fn run() -> ExitCode {
     let mut features = vec![
         "message_ids".to_string(),
         "chat_kinds".to_string(),
+        "chat_parents".to_string(),
         "entities".to_string(),
         "chat_membership".to_string(),
         "edits_in".to_string(),

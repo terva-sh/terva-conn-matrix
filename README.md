@@ -21,8 +21,11 @@ connproto v2 wire (P1/P2). All eight plan phases are landed — see **[PLAN.md](
 
 **Thread chat ids are a private convention**: a thread chat's id on the
 connproto wire is `<room_id>;thread=<root_event_id>`. connproto chat ids
-are opaque to the host, so only this connector ever parses them — nothing
-else should learn to. One invariant rides on it: the host correlates
+remain opaque to the host. With negotiated `chat_parents`, thread text and media also carry the room's ID and explicit DM/group kind.
+The host admits only the paired owner in DM threads and applies the current parent policy to group threads.
+Owner-only thread restrictions can narrow that policy. Thread revocation persists, and parent revocation stops its threads.
+
+Only this connector parses a thread ID. The host correlates
 message events on `(chat_id, id)`, so edits, deletes, and reactions
 touching a thread-resident message carry the same derived id the message
 was delivered under (PLAN.md §3 has the rule and the mechanism).

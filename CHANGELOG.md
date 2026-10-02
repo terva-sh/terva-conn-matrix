@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.14.3 — inherited thread admission (2026-10-01)
+
+- Thread messages report their parent room and kind after the host and
+  connector negotiate `chat_parents`. The host can apply parent admission
+  policy while each thread keeps a separate conversation.
+- Pin Rust SDK v0.4.0 instead of the temporary development revision.
+
+
 Phases refer to [PLAN.md](PLAN.md) §8.
 
 ## 0.14.2 — a `verify` verb, because setup could lose the verdict (2026-09-08)

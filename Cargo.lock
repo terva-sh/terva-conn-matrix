@@ -3939,7 +3939,7 @@ dependencies = [
 
 [[package]]
 name = "terva-conn-matrix"
-version = "0.14.2"
+version = "0.14.3"
 dependencies = [
  "age",
  "anyhow",
@@ -3962,8 +3962,8 @@ dependencies = [
 
 [[package]]
 name = "terva-connproto"
-version = "0.3.4"
-source = "git+https://github.com/terva-sh/terva-sdk-rust?tag=v0.3.4#7a13b330f8b7a3535fe9857be6dbf4682db9423a"
+version = "0.4.0"
+source = "git+https://github.com/terva-sh/terva-sdk-rust?tag=v0.4.0#ea27cdc3a532f9e6aa5cc443e21e13a4878f8fd5"
 dependencies = [
  "serde",
  "serde_json",
@@ -3971,8 +3971,8 @@ dependencies = [
 
 [[package]]
 name = "terva-connsdk"
-version = "0.3.4"
-source = "git+https://github.com/terva-sh/terva-sdk-rust?tag=v0.3.4#7a13b330f8b7a3535fe9857be6dbf4682db9423a"
+version = "0.4.0"
+source = "git+https://github.com/terva-sh/terva-sdk-rust?tag=v0.4.0#ea27cdc3a532f9e6aa5cc443e21e13a4878f8fd5"
 dependencies = [
  "age",
  "base64 0.22.1",
@@ -3986,8 +3986,8 @@ dependencies = [
 
 [[package]]
 name = "terva-env"
-version = "0.3.4"
-source = "git+https://github.com/terva-sh/terva-sdk-rust?tag=v0.3.4#7a13b330f8b7a3535fe9857be6dbf4682db9423a"
+version = "0.4.0"
+source = "git+https://github.com/terva-sh/terva-sdk-rust?tag=v0.4.0#ea27cdc3a532f9e6aa5cc443e21e13a4878f8fd5"
 dependencies = [
  "serde",
  "serde_json",
@@ -3995,8 +3995,8 @@ dependencies = [
 
 [[package]]
 name = "terva-wire"
-version = "0.3.4"
-source = "git+https://github.com/terva-sh/terva-sdk-rust?tag=v0.3.4#7a13b330f8b7a3535fe9857be6dbf4682db9423a"
+version = "0.4.0"
+source = "git+https://github.com/terva-sh/terva-sdk-rust?tag=v0.4.0#ea27cdc3a532f9e6aa5cc443e21e13a4878f8fd5"
 dependencies = [
  "serde",
  "serde_json",

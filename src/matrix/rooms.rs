@@ -131,6 +131,8 @@ pub(crate) struct InboundShape {
     pub chat_id: String,
     pub chat_kind: String,
     pub chat_title: String,
+    pub parent_chat_id: String,
+    pub parent_chat_kind: String,
     /// Set only for REAL replies — a thread relation's `is_falling_back`
     /// target is rendering compatibility, not intent.
     pub reply_to: String,
@@ -146,6 +148,7 @@ pub(crate) async fn inbound_shape(
     event_id: &EventId,
 ) -> InboundShape {
     if let Some(Relation::Thread(thread)) = relates_to {
+        let (parent_chat_kind, _) = chat_shape(shared, room).await;
         let root = &thread.event_id;
         note_thread_event(shared, root, event_id);
         let reply_to = thread
@@ -158,6 +161,8 @@ pub(crate) async fn inbound_shape(
             chat_id: thread_chat_id(room.room_id(), root),
             chat_kind: "thread".into(),
             chat_title: thread_title(shared, room, root).await,
+            parent_chat_id: room.room_id().to_string(),
+            parent_chat_kind,
             reply_to,
         };
     }
@@ -171,6 +176,8 @@ pub(crate) async fn inbound_shape(
         chat_id: room.room_id().to_string(),
         chat_kind,
         chat_title,
+        parent_chat_id: String::new(),
+        parent_chat_kind: String::new(),
         reply_to,
     }
 }
